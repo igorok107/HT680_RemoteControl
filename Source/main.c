@@ -86,9 +86,11 @@ void init(void){
   TIM1_IER_UIE = 1;
   TIM1_CR1_URS = 1;
     
-  //GPIO 
+  //Канал 1 
   PC_DDR_DDR7 = 1;
   PC_CR1_C17 = 1;
+  PC_ODR_ODR7 = 1; //Высокий уровень по умолчанию
+  //Канал 2
   PC_DDR_DDR6 = 1;
   PC_CR1_C16 = 1;
 };
