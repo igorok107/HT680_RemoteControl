@@ -4,10 +4,10 @@
 #define CODE_BUT1 0x8EBA
 #define CODE_BUT2 0x8EEA
 
-//От повтрного срабатывания
+//Задержка от повтрного срабатывания
 #define DEAD_TIME 200
 
-/*Выбор генератора (0xE1 - HSI; 0xD2 - LSI; 0xB4 - HSE) нужное раскомментировать*/
+/*Выбор генератора (0xE1 - HSI; 0xD2 - LSI; 0xB4 - HSE)*/
 //#define HSE 0xB4
 #define HSI 0xE1
 #define LSI 0xD2
@@ -61,13 +61,14 @@ void init(void){
   
   while (CLK_SWCR_SWBSY);
   
-  //Настройка входа для сигнала
+  CPU_CFG_GCR_AL = 1; //Разрешить прерывания во сне  
+  
+  //Настройка входа приёмника
   EXTI_CR1_PAIS = 2; //Прерывание на порт (0: падающий и низкий уровень, 1: возрастающий, 2: падающий, 3: оба)  
   PA_CR1_C13=1; //Подтяжка вверх
   PA_CR2_C23=1; //Разрешаем прерывания
-  CPU_CFG_GCR_AL = 1; //Прерывания во сне
   
-  //Таймер 4 для задержки ms
+  //Таймер 4 для задержки (delay_ms())
   TIM4_PSCR = 0; //Предделитель
   TIM4_ARR = 127;
   TIM4_CR1_URS = 1;
@@ -93,6 +94,12 @@ void init(void){
   //Канал 2
   PC_DDR_DDR6 = 1;
   PC_CR1_C16 = 1;
+  
+  //AC Detect вход
+  PD_DDR_DDR3 = 0;
+  PC_CR1_C13 = 1;
+  EXTI_CR1_PDIS = 2;
+  PD_CR2_C23 = 1;
 };
 
 void RESET (void)
@@ -140,6 +147,20 @@ void Button2(void)
     PC_ODR_ODR6 ^= 1;
 };
 
+#pragma vector=0x08
+__interrupt void AC_DET(void) 
+{
+  if (!DTime()) //Прогамный антидребезг
+  {
+    unsigned char State = PC_ODR >> 6;
+    if (State != 0)
+    {
+      PC_ODR = ((((State >> 1) ^ (State & 1)) << 2) | State) << 5; // (10) -> (11) -> (10) cycle
+    } else 
+      PC_ODR_ODR7 = 1;
+  }
+}
+
 #pragma vector = TIM1_OVR_UIF_vector 
 __interrupt void TIM1_Interrupt(void) 
 {
@@ -180,7 +201,7 @@ __interrupt void TIM1_Interrupt(void)
 };
 
 #pragma vector=0x05
-__interrupt void PORTA_interrupt(void) 
+__interrupt void RECIVER(void) 
 {
   PA_CR2_C23 = 0;
   switch (Flag){
