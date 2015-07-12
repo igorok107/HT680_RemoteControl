@@ -7,12 +7,9 @@
 //Задержка от повтрного срабатывания
 #define DEAD_TIME 200
 
-/*Выбор генератора (0xE1 - HSI; 0xD2 - LSI; 0xB4 - HSE)*/
-//#define HSE 0xB4
+#define HSE 0xB4
 #define HSI 0xE1
 #define LSI 0xD2
-
-#define CLK_DEF HSI
 
 unsigned short int BitTicks;
 unsigned char PreAmb = 1;
@@ -23,42 +20,14 @@ unsigned char Flag;
 
 //---------------------------------------------------------
 
-void delay_ms(unsigned int t)
-{
-  CLK_SWR = LSI; //Выбор LSI генератора
-  while (CLK_SWCR_SWBSY);
-  
-  while (t > 0) 
-  {
-    if (TIM4_SR_UIF == 1) { t--; TIM4_SR_UIF = 0;};
-  }
-  
-  CLK_SWR = CLK_DEF;
-  while (CLK_SWCR_SWBSY);
-};
-
 void init(void){
-#ifdef LSI
-  CLK_ICKR_LSIEN = 1;
-#else
   CLK_ICKR_LSIEN = 0;
-#endif
-#ifdef HSI
   CLK_ICKR_HSIEN = 1;
-#else
-  CLK_ICKR_HSIEN = 0;
-#endif
-#ifdef HSE  
-  CLK_ECKR_HSEEN = 1;
-  while (!CLK_ECKR_HSERDY);    
-#else
   CLK_ECKR_HSEEN = 0;
-#endif
   CLK_CKDIVR = 0; //Делитель  
   CLK_SWCR = 0; //Reset the clock switch control register.
   CLK_SWCR_SWEN = 1; //Переключение на выбранный генератор  
-  CLK_SWR = CLK_DEF; 
-  
+  CLK_SWR = HSI; 
   while (CLK_SWCR_SWBSY);
   
   CPU_CFG_GCR_AL = 1; //Разрешить прерывания во сне  
@@ -67,13 +36,6 @@ void init(void){
   EXTI_CR1_PAIS = 2; //Прерывание на порт (0: падающий и низкий уровень, 1: возрастающий, 2: падающий, 3: оба)  
   PA_CR1_C13=1; //Подтяжка вверх
   PA_CR2_C23=1; //Разрешаем прерывания
-  
-  //Таймер 4 для задержки (delay_ms())
-  TIM4_PSCR = 0; //Предделитель
-  TIM4_ARR = 127;
-  TIM4_CR1_URS = 1;
-  TIM4_EGR_UG = 1;  //Вызываем Update Event
-  TIM4_CR1_CEN = 1;
   
   //Таймер 1
   TIM1_CR1_URS = 1; //Прерывание только по переполнению счетчика  
